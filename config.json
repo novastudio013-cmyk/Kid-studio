@@ -1,0 +1,22 @@
+{
+  "channel_theme": "Original, gentle stories for kids aged 2-8",
+  "categories": [
+    "animal adventure",
+    "alphabet learning",
+    "number learning",
+    "moral story",
+    "funny cartoon story",
+    "friendship and kindness",
+    "colors and shapes",
+    "simple science"
+  ],
+  "voice": "en-US-AnaNeural",
+  "voice_rate": "-5%",
+  "image_style": "cute colorful children's picture book illustration, soft shapes, bright pastel colors, friendly, safe for kids, no text",
+  "short_scenes": 6,
+  "long_scenes": 14,
+  "fps": 25,
+  "made_for_kids": true,
+  "privacy": "private",
+  "language": "en"
+}

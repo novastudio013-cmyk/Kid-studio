@@ -28,7 +28,6 @@ def make_voice(text, voice, rate, path, offline=False):
 
 # ===== story =====
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def _prompt(cfg, category, fmt, past_titles):
@@ -48,22 +47,67 @@ Return ONLY JSON with this shape:
  "scenes": [{{"narration": "1-3 short sentences read aloud", "image_prompt": "what the picture shows"}}]}}"""
 
 
+def _candidate_models(key):
+    """Ask Google which models this key can use, and pick Flash-type text models, newest first."""
+    names = []
+    if os.environ.get("GEMINI_MODEL"):
+        names.append(os.environ["GEMINI_MODEL"])
+    try:
+        r = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                         params={"key": key, "pageSize": 200}, timeout=60)
+        r.raise_for_status()
+        found = []
+        for m in r.json().get("models", []):
+            n = m["name"].split("/")[-1]
+            if "generateContent" not in m.get("supportedGenerationMethods", []):
+                continue
+            if "flash" not in n or any(x in n for x in ("image", "tts", "live", "audio", "embed", "robotics", "computer")):
+                continue
+            found.append(n)
+        # prefer stable names over preview/experimental, then higher version numbers
+        found.sort(key=lambda n: (("preview" in n or "exp" in n), "lite" in n,
+                                  [-int(x) for x in re.findall(r"\d+", n)]))
+        names += found
+    except Exception as e:
+        print("could not list models:", e)
+    names += ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]
+    seen, out = set(), []
+    for n in names:
+        if n not in seen:
+            seen.add(n); out.append(n)
+    return out
+
+
 def generate_story(cfg, category, fmt, past_titles):
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise RuntimeError("GEMINI_API_KEY is not set")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
     body = {
         "contents": [{"parts": [{"text": _prompt(cfg, category, fmt, past_titles)}]}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 1.0},
     }
-    r = requests.post(url, params={"key": key}, json=body, timeout=120)
-    r.raise_for_status()
-    text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-    text = re.sub(r"^```(?:json)?|```$", "", text.strip()).strip()
-    story = json.loads(text)
-    validate(story)
-    return story
+    last = None
+    for model in _candidate_models(key)[:8]:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        for attempt in range(2):
+            try:
+                r = requests.post(url, params={"key": key}, json=body, timeout=180)
+                if r.status_code in (429, 500, 503) and attempt == 0:
+                    time.sleep(15); continue
+                if r.status_code != 200:
+                    last = f"{model}: HTTP {r.status_code} {r.text[:200]}"
+                    break
+                text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                text = re.sub(r"^```(?:json)?|```$", "", text.strip()).strip()
+                story = json.loads(text)
+                validate(story)
+                print("story model:", model)
+                return story
+            except Exception as e:
+                last = f"{model}: {e}"
+                break
+        print("model failed ->", last)
+    raise RuntimeError("No Gemini model worked. Last error: " + str(last))
 
 
 def validate(story):

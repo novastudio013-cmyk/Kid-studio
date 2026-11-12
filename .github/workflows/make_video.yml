@@ -1,1 +1,41 @@
-
+name: Make kids video
+on:
+  schedule:
+    - cron: "30 4 * * 1,3,5"   # Mon/Wed/Fri 10:00 IST -> long video
+    - cron: "30 4 * * 2,4,6"   # Tue/Thu/Sat 10:00 IST -> Short
+  workflow_dispatch:
+    inputs:
+      format:
+        description: "short or long"
+        default: "short"
+permissions:
+  contents: write
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements.txt
+      - name: Pick format
+        id: fmt
+        run: |
+          if [ -n "${{ github.event.inputs.format }}" ]; then echo "f=${{ github.event.inputs.format }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "30 4 * * 1,3,5" ]; then echo "f=long" >> $GITHUB_OUTPUT
+          else echo "f=short" >> $GITHUB_OUTPUT; fi
+      - name: Make and upload (private)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python make_video.py --format ${{ steps.fmt.outputs.f }} --upload
+      - name: Save topic history
+        run: |
+          git config user.name "kids-bot"; git config user.email "bot@users.noreply.github.com"
+          git add history.json || true
+          git commit -m "Update history" || echo "nothing to commit"
+          git push || true

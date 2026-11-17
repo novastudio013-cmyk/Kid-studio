@@ -1,0 +1,7 @@
+# 3D path needs no image API at all - Blender draws every frame.
+Pillow>=10.0
+edge-tts>=6.1
+requests>=2.31
+google-api-python-client>=2.100
+google-auth>=2.23
+google-auth-oauthlib>=1.1

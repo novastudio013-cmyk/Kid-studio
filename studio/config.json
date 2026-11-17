@@ -1,0 +1,28 @@
+{
+  "channel_name": "Starlit Stories",
+  "character_name": "Pip",
+  "voice": "en-US-JennyNeural",
+  "voice_rate": "-8%",
+  "voice_pitch": "+4Hz",
+  "kinds": [
+    "counting",
+    "colors",
+    "guess_animal",
+    "story"
+  ],
+  "short_scenes": 6,
+  "long_scenes": 12,
+  "music": true,
+  "outro_line": "See you next time!",
+  "made_for_kids": true,
+  "privacy": "private",
+  "language": "en",
+  "fps": 30,
+  "blender": "",
+  "lipsync": true,
+  "writer": "auto",
+  "quality": "high",
+  "languages": [
+    "en"
+  ]
+}

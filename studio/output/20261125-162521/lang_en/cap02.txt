@@ -1,0 +1,17 @@
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap_blank.png'
+duration 0.470
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap02_0_0.png'
+duration 0.379
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap02_0_1.png'
+duration 0.443
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap02_0_2.png'
+duration 0.253
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap02_0_3.png'
+duration 0.569
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap02_1_0.png'
+duration 0.443
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap02_1_1.png'
+duration 0.816
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap_blank.png'
+duration 0.415
+file '/home/claude/kid-studio/studio/output/20261125-162521/lang_en/cap_blank.png'

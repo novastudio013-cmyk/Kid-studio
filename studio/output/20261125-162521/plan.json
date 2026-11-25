@@ -1,0 +1,71 @@
+[
+ {
+  "out": "/home/claude/kid-studio/studio/output/20261125-162521/shot_00.png",
+  "res": [
+   1080,
+   1920
+  ],
+  "character": "pip",
+  "kind": "counting",
+  "props": {
+   "trees": 0,
+   "hills": 2,
+   "sun": true,
+   "stars": 1
+  },
+  "pose": {
+   "arm_raise": 0.35,
+   "head_tilt": 4
+  },
+  "sky": "#CFEBFF",
+  "ground": "#8FD653",
+  "back": "#EAF6FF",
+  "cam": {}
+ },
+ {
+  "out": "/home/claude/kid-studio/studio/output/20261125-162521/shot_01.png",
+  "res": [
+   1080,
+   1920
+  ],
+  "character": "pip",
+  "kind": "counting",
+  "props": {
+   "trees": 0,
+   "hills": 2,
+   "sun": true,
+   "stars": 2
+  },
+  "pose": {
+   "arm_raise": 0.5,
+   "head_tilt": -4
+  },
+  "sky": "#CFEBFF",
+  "ground": "#8FD653",
+  "back": "#EAF6FF",
+  "cam": {}
+ },
+ {
+  "out": "/home/claude/kid-studio/studio/output/20261125-162521/shot_02.png",
+  "res": [
+   1080,
+   1920
+  ],
+  "character": "pip",
+  "kind": "counting",
+  "props": {
+   "trees": 0,
+   "hills": 2,
+   "sun": true,
+   "stars": 3
+  },
+  "pose": {
+   "arm_raise": 0.2,
+   "head_tilt": 4
+  },
+  "sky": "#CFEBFF",
+  "ground": "#8FD653",
+  "back": "#EAF6FF",
+  "cam": {}
+ }
+]

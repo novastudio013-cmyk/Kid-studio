@@ -71,6 +71,7 @@ jobs:
       - name: Decide and make video
         working-directory: studio
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
@@ -81,6 +82,7 @@ jobs:
           IN_LANGS: ${{ inputs.languages }}
           SCHEDULE: ${{ github.event.schedule }}
         run: |
+          IN_KIND="$(echo "$IN_KIND" | tr '[:upper:]' '[:lower:]' | xargs)"
           # A manual run that names a kind bypasses the agent and builds exactly that.
           # Everything else goes through the agent, which decides what to make - or to skip.
           if [ -n "$IN_KIND" ] || [ -n "$IN_QUALITY" ] || [ -n "$IN_LANGS" ]; then

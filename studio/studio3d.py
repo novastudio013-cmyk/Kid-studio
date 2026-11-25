@@ -216,7 +216,7 @@ def eye(loc, r, head):
     """Big shiny toddler eye: white, iris, pupil, catchlight."""
     x, y, z = loc
     piv = pivot("eye", loc, head)
-    ell((x, y, z), (r, r * 0.55, r * 1.12), mat("#FFFFFF", 0.2), piv, outline=False)
+    ell((x, y, z), (r, r * 0.55, r * 1.12), mat("#FFFFFF", 0.35, coat=0.0), piv, outline=False)   # no green reflection in the eye
     py = y - r * 0.42
     ell((x, py, z - r * 0.04), (r * 0.66, r * 0.26, r * 0.76), mat("#2B3A55", 0.25), piv, outline=False)
     ell((x, py - r * 0.16, z - r * 0.04), (r * 0.34, r * 0.20, r * 0.72), mat("#12161F", 0.15), piv, outline=False)
@@ -496,7 +496,7 @@ def setup_world(sky="#CFEBFF", ground="#8FD653", back="#EAF6FF"):
     bpy.ops.mesh.primitive_plane_add(size=42, location=(0, 0, 0))
     g = bpy.context.active_object
     g.name = "GROUND"
-    g.data.materials.append(mat(ground, 0.75))
+    g.data.materials.append(mat(ground, 0.92, coat=0.0))   # matte: no mirror image of Pip
 
     # flat-emission backdrop: renders as an exact sky colour, immune to exposure
     bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 9.5, 8), rotation=(math.radians(90), 0, 0))

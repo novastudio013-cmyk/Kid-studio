@@ -1,0 +1,91 @@
+{
+  "en": {
+    "kind": "counting",
+    "scenes": [
+      {
+        "line": {
+          "k": "count_intro",
+          "i": 1,
+          "p": {
+            "n_num": 1,
+            "thing_key": "star",
+            "plural": false
+          }
+        },
+        "on_screen_text": "",
+        "props": {
+          "trees": 0,
+          "hills": 2,
+          "sun": true,
+          "stars": 1
+        },
+        "pose": {
+          "arm_raise": 0.35,
+          "head_tilt": 4
+        },
+        "narration": "Time to count! Are you ready?"
+      },
+      {
+        "line": {
+          "k": "count_rhyme",
+          "i": 1,
+          "p": {
+            "n_num": 2,
+            "thing_key": "star",
+            "plural": true
+          }
+        },
+        "on_screen_text": "2",
+        "props": {
+          "trees": 0,
+          "hills": 2,
+          "sun": true,
+          "stars": 2
+        },
+        "pose": {
+          "arm_raise": 0.5,
+          "head_tilt": -4
+        },
+        "narration": "Two little stars, waving at the sky!"
+      },
+      {
+        "line": {
+          "k": "count_outro",
+          "i": 2,
+          "p": {
+            "n_num": 3,
+            "thing_key": "star",
+            "plural": true
+          }
+        },
+        "on_screen_text": "3",
+        "props": {
+          "trees": 0,
+          "hills": 2,
+          "sun": true,
+          "stars": 3
+        },
+        "pose": {
+          "arm_raise": 0.2,
+          "head_tilt": 4
+        },
+        "narration": "Three stars, all counted. Clever you!"
+      }
+    ],
+    "meta": {
+      "shape": 0,
+      "n": 3,
+      "thing": "star"
+    },
+    "lang": "en",
+    "title": "Pip Counts Three Stars",
+    "thumb_text": "COUNT WITH PIP",
+    "description": "Pip counts stars, one by one. A calm, cheerful counting video for toddlers.",
+    "tags": [
+      "counting",
+      "numbers for toddlers",
+      "learn to count"
+    ],
+    "lang_label": "English"
+  }
+}

@@ -16,6 +16,7 @@ import json
 import math
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -178,10 +179,10 @@ LANG = {
                         "{c} rolls the ball to the friend.", "Two friends, one ball, so much fun!"],
             "trying again": ["{c} wants to reach a tall balloon.", "{c} hops once. Not yet!",
                              "{c} hops twice. So close!", "One more hop. Hooray, {c} can do it!"],
-            "being kind": ["{c} sees a little bird feeling small.", "{c} gives a warm smile.",
-                           "{c} waves a gentle wing.", "The little bird smiles back. Kindness is lovely!"],
-            "saying sorry": ["{c} bumps a friend's tower. Oh no!", "{c} says sorry, softly.",
-                             "They build it again together.", "Two helpers are better than one!"],
+            "being kind": ["{c} sees a friend feeling small.", "{c} gives a warm smile.",
+                           "{c} waves a gentle wing.", "The friend smiles back. Kindness is lovely!"],
+            "saying sorry": ["{c} bumps into a friend. Oh no!", "{c} says sorry, softly.",
+                             "The friend smiles. It is okay!", "Saying sorry makes friends happy!"],
             "being brave": ["The sky goes a little bit dark.", "{c} feels shy and small.",
                             "{c} takes one slow, brave breath.", "{c} is brave. Everything is fine!"],
             "sharing a snack": ["{c} has two juicy apples.", "A friend has none at all.",
@@ -604,13 +605,21 @@ Rules:
 - Gentle, warm, positive. Nothing scary, violent or sad-ending. No brand names or existing characters.
 - Where it fits, use a gentle rhyme and repeat a catchy phrase.
 - "on_screen_text" is a single word or number, or "" for nothing.
-- image_prompt describes only what we SEE: the character's pose and expression, simple objects, bright background.
+- The pictures are 3D renders with ONE character per scene on a grassy hill. Only this can be shown:
+  character: "pip" (the star), "duck", "frog" or "cat" (guest friends, use sparingly);
+  props: balloons (0-5), apples (0-5), stars (0-5), fish (0-4), hills (1-2), trees (0-3), sun (true/false),
+  bush (true/false, Pip peeks over it); pose: arm_raise from 0.0 (arms down) to 1.0 (arms up, cheering).
+- The narration MUST describe only what the picture shows. NEVER mention things that cannot be drawn
+  (towers, houses, toys, food other than apples, other people, vehicles, weather). If a friend is part of
+  the story, show the friend in their own scene using the character field.
+- Vary pose and props from scene to scene so the pictures do not all look the same.
 
 Return ONLY JSON, no markdown:
 {{"title": "under 70 characters",
   "description": "2 warm sentences for parents",
   "tags": ["8-12 short tags"],
-  "scenes": [{{"narration": "...", "on_screen_text": "", "image_prompt": "..."}}]}}"""
+  "scenes": [{{"narration": "...", "on_screen_text": "", "character": "pip",
+               "props": {{"hills": 2, "trees": 1, "balloons": 0}}, "pose": {{"arm_raise": 0.5}}}}]}}"""
 
 KIND_BRIEF = {
     "counting": "A counting rhyme that counts up from 1, adding one object per scene.",
@@ -650,6 +659,36 @@ def _gemini_json(prompt, key, temperature=0.95):
     return None
 
 
+ALLOWED_CHARS = ("pip", "duck", "frog", "cat")
+INT_PROPS = {"balloons": 5, "apples": 5, "stars": 5, "fish": 4, "hills": 2, "trees": 3}
+
+
+def _sanitize_visuals(obj):
+    """Gemini may only ask for things Blender can draw. Anything else is dropped."""
+    for sc in obj.get("scenes", []) or []:
+        who = str(sc.get("character", "pip")).lower()
+        sc["character"] = who if who in ALLOWED_CHARS else "pip"
+        raw = sc.get("props") if isinstance(sc.get("props"), dict) else {}
+        props = {}
+        for k, mx in INT_PROPS.items():
+            if k in raw:
+                try:
+                    props[k] = max(0, min(mx, int(raw[k])))
+                except (TypeError, ValueError):
+                    pass
+        props.setdefault("hills", 2)
+        if raw.get("sun"):
+            props["sun"] = True
+        if raw.get("bush"):
+            props["bush"] = True
+        sc["props"] = props
+        pose = sc.get("pose") if isinstance(sc.get("pose"), dict) else {}
+        try:
+            sc["pose"] = {"arm_raise": max(0.0, min(1.0, float(pose.get("arm_raise", 0.3))))}
+        except (TypeError, ValueError):
+            sc["pose"] = {"arm_raise": 0.3}
+
+
 def gemini_script(cfg, kind, fmt, past):
     """Ask Gemini for a script. Returns None on any problem - caller falls back to grammar."""
     key = os.environ.get("GEMINI_API_KEY")
@@ -666,6 +705,7 @@ def gemini_script(cfg, kind, fmt, past):
     obj["kind"] = kind
     obj.setdefault("meta", {})
     obj["lang"] = "en"
+    _sanitize_visuals(obj)
     return obj if validate_script(obj, n) else None
 
 
@@ -873,7 +913,7 @@ def mouth_track(work, idx, size, info, spans, dur, fps):
 
 
 # --------------------------------------------------------------------------- 2.5D motion
-def motion_clip(still, audio, overlay_png_, out, size, fps, dur, idx, mouth=None, q=None):
+def motion_clip(still, audio, overlay_png_, out, size, fps, dur, idx, mouth=None, q=None, caps=None):
     """Animate one still: push-in / pan / parallax-ish drift + a gentle character bob."""
     w, h = size
     frames = max(1, int(dur * fps))
@@ -911,6 +951,11 @@ def motion_clip(still, audio, overlay_png_, out, size, fps, dur, idx, mouth=None
         parts.append("[%d:v]format=rgba[mo]" % idx_in)
         parts.append("%s[mo]overlay=%d:%d:eof_action=repeat[vm]" % (cur, mx, my))
         cur, idx_in = "[vm]", idx_in + 1
+    if caps:
+        cmd += ["-f", "concat", "-safe", "0", "-i", caps]
+        parts.append("[%d:v]format=rgba,fps=%d[cp]" % (idx_in, fps))
+        parts.append("%s[cp]overlay=0:0:format=auto[vc]" % cur)
+        cur, idx_in = "[vc]", idx_in + 1
     parts.append("%sformat=yuv420p[v]" % cur)
     fc = ";".join(parts)
     ai = idx_in
@@ -989,6 +1034,71 @@ def estimate_spans(text, dur):
     return spans
 
 
+# --------------------------------------------------------------------------- word-by-word captions
+def _caption_frame(chunk, active, size, path):
+    from PIL import Image, ImageDraw
+    w, h = size
+    img = Image.new("RGBA", size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    fs = int(h * 0.050 if h > w else h * 0.078)
+    while True:
+        f = font(fs)
+        sw = max(4, fs // 9)
+        space = d.textlength(" ", font=f)
+        widths = [d.textlength(x, font=f) for x in chunk]
+        total = sum(widths) + space * (len(chunk) - 1)
+        if total <= w * 0.90 or fs < 24:
+            break
+        fs = int(fs * 0.92)
+    x = (w - total) / 2
+    y = int(h * (0.70 if h > w else 0.80))     # above the Shorts buttons
+    for i, word in enumerate(chunk):
+        col = (255, 214, 10, 255) if i == active else (255, 255, 255, 255)
+        d.text((x, y), word, font=f, fill=col, stroke_width=sw, stroke_fill=(25, 30, 60, 255))
+        x += widths[i] + space
+    img.save(path, "PNG")
+
+
+def make_captions(words, spans, size, work, idx, dur, lead=0.35):
+    """Returns a concat-list file for a transparent caption stream, or None."""
+    from PIL import Image
+    if not words or len(words) != len(spans):
+        return None
+    items = [(re.sub(r"\s+", " ", t).strip(), a + lead, b + lead) for t, (a, b) in zip(words, spans)]
+    items = [x for x in items if x[0]]
+    if not items:
+        return None
+    chunks = [items[i:i + 4] for i in range(0, len(items), 4)]
+    blank = os.path.join(work, "cap_blank.png")
+    if not os.path.exists(blank):
+        Image.new("RGBA", size, (0, 0, 0, 0)).save(blank)
+    lines, t = [], 0.0
+    for ci, ch in enumerate(chunks):
+        texts = [x[0] for x in ch]
+        for wi, (_, a, b) in enumerate(ch):
+            if wi + 1 < len(ch):
+                end = ch[wi + 1][1]
+            elif ci + 1 < len(chunks):
+                end = chunks[ci + 1][0][1]
+            else:
+                end = min(dur, b + 0.5)
+            if a > t:
+                lines.append((blank, a - t))
+            fr = os.path.join(work, "cap%02d_%d_%d.png" % (idx, ci, wi))
+            _caption_frame(texts, wi, size, fr)
+            seg = max(0.05, end - max(a, t))
+            lines.append((fr, seg))
+            t = max(t, a) + seg
+    if t < dur:
+        lines.append((blank, dur - t))
+    lst = os.path.join(work, "cap%02d.txt" % idx)
+    with open(lst, "w") as f:
+        for fr, dd in lines:
+            f.write("file '%s'\nduration %.3f\n" % (os.path.abspath(fr), dd))
+        f.write("file '%s'\n" % os.path.abspath(lines[-1][0]))
+    return lst
+
+
 def make_voice(cfg, text, path, offline=False):
     """Synthesise speech and return word spans [(start_s, end_s), ...] for lip-sync."""
     if offline:
@@ -996,6 +1106,7 @@ def make_voice(cfg, text, path, offline=False):
         run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi",
              "-i", "sine=frequency=300:sample_rate=24000", "-af", "volume=0.05",
              "-t", "%.2f" % secs, "-c:a", "libmp3lame", path])
+        make_voice.words = [w for w in text.split() if w.strip()]
         return estimate_spans(text, secs)
 
     import asyncio
@@ -1006,7 +1117,7 @@ def make_voice(cfg, text, path, offline=False):
         # boundary="WordBoundary" is required; the default only emits sentence boundaries
         comm = edge_tts.Communicate(text, cfg["voice"], rate=cfg["voice_rate"],
                                     pitch=cfg["voice_pitch"], boundary="WordBoundary")
-        spans = []
+        spans, words = [], []
         with open(path, "wb") as fh:
             async for chunk in comm.stream():
                 if chunk["type"] == "audio":
@@ -1014,6 +1125,8 @@ def make_voice(cfg, text, path, offline=False):
                 elif chunk["type"] == "WordBoundary":
                     a = chunk["offset"] / 1e7
                     spans.append((a, a + chunk["duration"] / 1e7))
+                    words.append(str(chunk.get("text", "")))
+        make_voice.words = words
         return spans
 
     last = None
@@ -1021,6 +1134,8 @@ def make_voice(cfg, text, path, offline=False):
         try:
             spans = asyncio.run(go())
             if os.path.exists(path) and os.path.getsize(path) > 500:
+                if not spans:
+                    make_voice.words = [w for w in text.split() if w.strip()]
                 return spans or estimate_spans(text, probe(path))
         except Exception as e:
             last = e
@@ -1099,14 +1214,14 @@ def make_music(path, seconds, seed):
 
 
 # --------------------------------------------------------------------------- assembly
-XF = 0.35
-TRANSITIONS = ["fade", "slideleft", "circleopen", "wiperight"]
+XF = 0.30
+TRANSITIONS = ["fadeblack"]      # a dissolve shows two Pips on top of each other
 
 
 def _xfade_pair(a, b, dur_a, dur_b, out, crf, preset):
     """Crossfade two clips into one. Bounded memory: only two streams open at a time."""
     off = max(0.0, dur_a - XF)
-    fc = ("[0:v][1:v]xfade=transition=fade:duration=%.2f:offset=%.3f[v];"
+    fc = ("[0:v][1:v]xfade=transition=fadeblack:duration=%.2f:offset=%.3f[v];"
           "[0:a][1:a]acrossfade=d=%.2f[a]" % (XF, off, XF))
     run(["ffmpeg", "-y", "-loglevel", "error", "-i", a, "-i", b,
          "-filter_complex", fc, "-map", "[v]", "-map", "[a]",
@@ -1459,8 +1574,14 @@ def produce_language(cfg, q, story, lang, shots, work, size, args, offline):
                 shifted = [(a + 0.35, b + 0.35) for (a, b) in spans]
                 mouth = mouth_track(d, i, size, info, shifted, dur,
                                     int(q.get("mouth_fps", 30)))
+        caps = None
+        if cfg.get("captions", True):
+            try:
+                caps = make_captions(getattr(make_voice, "words", []), spans, size, d, i, dur)
+            except Exception as e:
+                print("  captions skipped:", e)
         clip = os.path.join(d, "c%02d.mp4" % i)
-        motion_clip(sh["out"], aud, ov, clip, size, cfg["fps"], dur, i, mouth=mouth, q=q)
+        motion_clip(sh["out"], aud, ov, clip, size, cfg["fps"], dur, i, mouth=mouth, q=q, caps=caps)
         clips.append(clip)
         durs.append(dur)
         if mouth:

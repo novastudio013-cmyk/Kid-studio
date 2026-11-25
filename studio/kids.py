@@ -629,12 +629,37 @@ KIND_BRIEF = {
 }
 
 
+def _gemini_models(key):
+    """Model names change and differ per key, so ask Google which ones this key can use."""
+    import requests
+    names = [os.environ["GEMINI_MODEL"]] if os.environ.get("GEMINI_MODEL") else []
+    try:
+        r = requests.get("https://generativelanguage.googleapis.com/v1beta/models",
+                         params={"key": key, "pageSize": 200}, timeout=60)
+        r.raise_for_status()
+        found = []
+        for m in r.json().get("models", []):
+            n = m["name"].split("/")[-1]
+            if "generateContent" not in m.get("supportedGenerationMethods", []):
+                continue
+            if "flash" not in n or any(x in n for x in ("image", "tts", "live", "audio", "embed",
+                                                          "robotics", "computer")):
+                continue
+            found.append(n)
+        found.sort(key=lambda n: (("preview" in n or "exp" in n), "lite" in n,
+                                  [-int(x) for x in re.findall(r"\d+", n)]))
+        names += found
+        print("  gemini models available: %s" % ", ".join(found[:4]))
+    except Exception as e:
+        print("  could not list gemini models: %s" % e)
+    names += ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]
+    return list(dict.fromkeys(names))
+
+
 def _gemini_json(prompt, key, temperature=0.95):
     """Call Gemini and parse JSON. Returns None on any problem."""
     import requests
-    models = [os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash",
-              "gemini-2.0-flash", "gemini-flash-latest"]
-    for model in dict.fromkeys(models):
+    for model in _gemini_models(key):
         for attempt in range(2):
             try:
                 r = requests.post(

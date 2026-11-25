@@ -1,9 +1,5 @@
-name: Make kids video
+name: Make kids video (old, manual only)
 on:
-  schedule:
-    - cron: "30 4 * * 2"   # Tuesday 10:00 IST  -> Short
-    - cron: "30 4 * * 4"   # Thursday 10:00 IST -> Short
-    - cron: "30 4 * * 0"   # Sunday 10:00 IST   -> longer video
   workflow_dispatch:
     inputs:
       format:

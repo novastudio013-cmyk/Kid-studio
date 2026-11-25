@@ -81,6 +81,7 @@ jobs:
           IN_LANGS: ${{ inputs.languages }}
           SCHEDULE: ${{ github.event.schedule }}
         run: |
+          IN_KIND="$(echo "$IN_KIND" | tr '[:upper:]' '[:lower:]' | xargs)"
           # A manual run that names a kind bypasses the agent and builds exactly that.
           # Everything else goes through the agent, which decides what to make - or to skip.
           if [ -n "$IN_KIND" ] || [ -n "$IN_QUALITY" ] || [ -n "$IN_LANGS" ]; then
